@@ -67,6 +67,14 @@ npx harness-recall "database deadlock"
 # Search sessions (prioritizes current project, falls back across all projects)
 recall "redis cache deadlock"
 
+# List all unfinished, in-progress, or interrupted sessions
+recall unfinished
+recall "payment" --unfinished
+
+# Filter by session status (已完成 | 进行中 | 中断 | 待继续 | 仅咨询)
+recall --status=进行中
+recall --status=中断
+
 # Search explicitly across all projects
 recall "authentication jwt" --all
 
@@ -77,7 +85,7 @@ recall "benchmark" --source=codex
 # Filter by project directory name
 recall "payment" --project=my-saas-app
 
-# Interactive selector mode (TUI)
+# Interactive selector mode (TUI - press 'u' to filter unfinished)
 recall -i
 
 # Inspect full details and transcript excerpt of top match

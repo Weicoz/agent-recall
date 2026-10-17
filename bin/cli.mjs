@@ -29,6 +29,9 @@ Supports: \x1b[32mClaude Code\x1b[0m, \x1b[32mCodex\x1b[0m, \x1b[32mAntigravity\
 \x1b[1mUSAGE:\x1b[0m
   recall <keywords...>               Search sessions (current project prioritized)
   recall <keywords...> --all         Search across all projects
+  recall unfinished [keywords...]    List unfinished / in-progress / interrupted sessions
+  recall <keywords...> --unfinished   Search only among unfinished sessions
+  recall <keywords...> --status=X     Filter by status (已完成|进行中|中断|待继续|仅咨询)
   recall <keywords...> -i            Interactive selection mode (TUI)
   recall <keywords...> --detail      Show full detail of top match
   recall <keywords...> --json        Output results in JSON format
@@ -37,6 +40,7 @@ Supports: \x1b[32mClaude Code\x1b[0m, \x1b[32mCodex\x1b[0m, \x1b[32mAntigravity\
 
 \x1b[1mMANAGEMENT COMMANDS:\x1b[0m
   recall status                      Show indexed scale & pending counts
+  recall unfinished                  List all in-progress or interrupted sessions
   recall digest [--force]            Manually run incremental or full digest
   recall resume <sessionId>          Show or execute resume command for session
   recall mcp                         Start Model Context Protocol (MCP) server
@@ -112,23 +116,29 @@ if (subCmd === 'mcp') {
   }
   process.exit(0);
 } else {
-  // Query mode
+  // Query mode or Unfinished query mode
   const kvOpt = (n) => {
     const p = args.find((a) => a.startsWith(`--${n}=`));
     return p ? p.slice(n.length + 3) : '';
   };
-  const terms = args.filter((a) => !a.startsWith('-')).map((t) => t.toLowerCase());
+  const isUnfinishedCmd = (subCmd === 'unfinished' || subCmd === 'pending');
+  const wantUnfinished = isUnfinishedCmd || has('--unfinished') || has('--pending');
+  const wantStatusVal = kvOpt('status');
+  const queryRaw = isUnfinishedCmd ? args.slice(1) : args;
+  const terms = queryRaw.filter((a) => !a.startsWith('-')).map((t) => t.toLowerCase());
   const wantJson = has('--json');
   const wantDetail = has('--detail');
   const wantInteractive = has('-i') || has('--interactive');
   const wantAll = has('--all');
-  const limit = Number(kvOpt('limit')) || 5;
+  const limit = Number(kvOpt('limit')) || (wantUnfinished ? 10 : 5);
   const project = kvOpt('project');
   const source = kvOpt('source');
 
   const { results, matchedCount, isCurrentProjectOnly } = await searchSessions(terms, {
     project,
     source,
+    status: wantStatusVal,
+    unfinished: wantUnfinished,
     limit,
     all: wantAll,
   });
@@ -148,28 +158,43 @@ if (subCmd === 'mcp') {
     // TUI controls process exit
   } else {
     if (results.length === 0) {
-      console.log('未找到匹配的历史会话。可以尝试使用更宽泛的关键词或添加 --all 参数。');
+      if (wantUnfinished) {
+        console.log('未发现未完成或中断的历史会话。所有任务均已标记完成或已归档。');
+      } else {
+        console.log('未找到匹配的历史会话。可以尝试使用更宽泛的关键词或添加 --all 参数。');
+      }
       process.exit(0);
     }
 
     if (wantDetail && results.length > 0) {
       const top = results[0];
       try {
-        const p = detailPath(top.project, top.id, top.time);
+        const p = detailPath(top.project, top.id, top.lastTime || top.time);
         console.log(await readFile(p, 'utf8'));
       } catch {
-        console.log(`# ${top.title}\n\n${top.summary}`);
+        console.log(`# ${top.title}\n\n- 状态：${top.status}\n- 最后活动：${top.lastTimeFormatted} (${top.relativeTime})\n\n${top.summary}`);
       }
       process.exit(0);
     }
 
-    console.log(`\x1b[90m共匹配 ${matchedCount} 条会话${isCurrentProjectOnly ? ' (当前项目优先，使用 --all 跨全项目)' : ''}：\x1b[0m\n`);
+    if (wantUnfinished) {
+      console.log(`\x1b[33m共发现 ${matchedCount} 条未完成/中断/待继续会话 (按最近活动时间倒序，展示前 ${results.length} 条)：\x1b[0m\n`);
+    } else {
+      console.log(`\x1b[90m共匹配 ${matchedCount} 条会话${isCurrentProjectOnly ? ' (当前项目优先，使用 --all 跨全项目)' : ''}：\x1b[0m\n`);
+    }
 
     for (let i = 0; i < results.length; i++) {
       const r = results[i];
-      const tag = i === 0 ? '\x1b[32m[最佳匹配]\x1b[0m ' : '';
-      console.log(`${tag}\x1b[1m#${i + 1} [${r.sourceLabel}] [${r.projectLabel || r.project}] ${r.title}\x1b[0m`);
-      console.log(`   \x1b[90m时间: ${localTime(r.time)} | 命中: ${r.matchedFields.join(', ')}\x1b[0m`);
+      const tag = i === 0 && !wantUnfinished ? '\x1b[32m[最佳匹配]\x1b[0m ' : '';
+      const statusColor = r.status === '已完成' ? '\x1b[32m'
+        : r.status === '进行中' ? '\x1b[33m'
+        : r.status === '中断' ? '\x1b[31m'
+        : r.status === '待继续' ? '\x1b[35m'
+        : '\x1b[36m';
+      const statusBadge = `${statusColor}[${r.status || '已完成'}]\x1b[0m`;
+
+      console.log(`${tag}\x1b[1m#${i + 1} [${r.sourceLabel}] [${r.projectLabel || r.project}] ${r.title}\x1b[0m ${statusBadge}`);
+      console.log(`   \x1b[90m最后活动: ${r.lastTimeFormatted} (${r.relativeTime})${r.statusReason ? ` | 说明: ${r.statusReason}` : ''}${r.matchedFields?.length ? ` | 命中: ${r.matchedFields.join(', ')}` : ''}\x1b[0m`);
       console.log(`   \x1b[33m摘要: \x1b[0m${r.summary}`);
       if (r.resume) {
         console.log(`   \x1b[36m回到会话: \x1b[0m\x1b[4m${r.resume}\x1b[0m`);

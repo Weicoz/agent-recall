@@ -48,17 +48,27 @@ When the user asks to recall or find past sessions (e.g. `/session-recall <query
 ### Stage 2: Programmatic Retrieval
 Execute candidate search via the CLI (fetches top 5–10 candidates):
 ```bash
+# Standard search
 recall <extracted_keywords...> --limit=10 [--all] [--json]
+
+# Filter unfinished / in-progress / interrupted sessions
+recall unfinished [keywords...]
+recall <keywords...> --unfinished
+
+# Filter by specific status
+recall <keywords...> --status=<已完成|进行中|中断|待继续|仅咨询>
 ```
 - By default, searches prioritize the current project working directory, falling back globally.
 - Use `--all` to force global search across all projects.
 - Use `--source=<codex|claude|agy|kimi|dsh>` to filter by tool.
+- Every result includes status (`status`, `isUnfinished`, `statusReason`) and timestamps (`lastTimeFormatted`, `relativeTime`).
 
 ### Stage 3: LLM Relevance Reranking & Presentation
 Compare recalled candidates against the user's original request:
 1. **Best Match First**: Mark `#1 (Recommended / Best Fit)` with a 1-sentence rationale explaining why it best matches the query.
-2. **Subsequent Candidates**: List in descending order of relevance.
-3. **Resume Hook**: Always include the exact resume command displayed in the result (`回到会话 / Resume: ...`).
+2. **Status & Time**: Always display the status badge `[已完成 | 进行中 | 中断 | 待继续]` and last activity timestamp.
+3. **Subsequent Candidates**: List in descending order of relevance.
+4. **Resume Hook**: Always include the exact resume command displayed in the result (`回到会话 / Resume: ...`).
 
 ---
 
@@ -67,6 +77,9 @@ Compare recalled candidates against the user's original request:
 ```bash
 recall "authentication jwt"           # Search current project, fall back globally
 recall "auction" --all                # Force search across all projects
+recall unfinished                     # List all unfinished, in-progress, or interrupted sessions
+recall "payment" --unfinished         # Search only among unfinished payment sessions
+recall --status=进行中                 # Filter specifically for in-progress sessions
 recall "refactor" --source=claude     # Filter by specific harness
 recall "payment" --project=my-saas    # Filter by project directory name
 recall "migration" --detail           # Display full transcript detail for top match

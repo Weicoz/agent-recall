@@ -46,3 +46,29 @@ test('scoreRecord: evaluates field weights properly', () => {
   const sMulti = scoreRecord(rec, ['workers', 'wrangler']);
   assert.equal(sMulti.total, 11);
 });
+
+test('isUnfinishedSession: correctly classifies in-progress, interrupted, and leftover work', async () => {
+  const { isUnfinishedSession, searchSessions } = await import('../lib/search.mjs');
+
+  assert.equal(isUnfinishedSession({ status: '进行中' }), true);
+  assert.equal(isUnfinishedSession({ status: '中断' }), true);
+  assert.equal(isUnfinishedSession({ status: '待继续' }), true);
+  assert.equal(isUnfinishedSession({ status: '已完成' }), false);
+  assert.equal(isUnfinishedSession({ status: '仅咨询' }), false);
+
+  // Summary with leftover markers
+  assert.equal(isUnfinishedSession({ status: '已完成', summary: '核心功能已做完，遗留：配置项未同步' }), true);
+  assert.equal(isUnfinishedSession({ status: '已完成', summary: '下一步需要继续开发' }), true);
+  assert.equal(isUnfinishedSession({ status: '已完成', summary: '所有功能均已开发并通过测试' }), false);
+
+  // Search with unfinished: true
+  const res = await searchSessions([], { unfinished: true, limit: 10 });
+  assert.ok(res.results.length > 0);
+  for (const item of res.results) {
+    assert.equal(item.isUnfinished, true);
+    assert.ok(item.lastTime > 0);
+    assert.ok(typeof item.lastTimeFormatted === 'string');
+    assert.ok(typeof item.relativeTime === 'string');
+    assert.ok(typeof item.status === 'string');
+  }
+});
