@@ -1,0 +1,49 @@
+{
+  "name": "harness-recall",
+  "version": "1.0.0",
+  "description": "Universal session recall & management CLI for AI coding agents (Claude Code, Codex, Antigravity, Kimi Code, DSH). Local-first, cross-harness semantic history & resume.",
+  "type": "module",
+  "main": "./lib/search.mjs",
+  "bin": {
+    "recall": "./bin/cli.mjs",
+    "agent-recall": "./bin/cli.mjs",
+    "harness-recall": "./bin/cli.mjs"
+  },
+  "files": [
+    "bin",
+    "lib",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "recall": "node bin/cli.mjs",
+    "digest": "node bin/digest.mjs",
+    "mcp": "node bin/mcp.mjs"
+  },
+  "keywords": [
+    "ai-agent",
+    "claude-code",
+    "codex",
+    "antigravity",
+    "kimi-code",
+    "dsh",
+    "session-manager",
+    "session-recall",
+    "mcp-server",
+    "terminal-history"
+  ],
+  "author": "Weicoz",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Weicoz/agent-recall.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Weicoz/agent-recall/issues"
+  },
+  "homepage": "https://github.com/Weicoz/agent-recall#readme",
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
