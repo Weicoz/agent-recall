@@ -119,6 +119,33 @@ Now Claude can call `recall_sessions` or `get_session_detail` to look up what yo
 
 ---
 
+## 🤖 Using as an Agent Skill (Claude Code / Codex / Antigravity / Kimi / DSH)
+
+`agent-recall` ships with a ready-to-use Agent Skill definition at `skills/session-recall/SKILL.md`.
+
+Simply link or copy it to your agent skills directory:
+```bash
+# For Claude Code
+mkdir -p ~/.claude/skills/session-recall
+cp skills/session-recall/SKILL.md ~/.claude/skills/session-recall/
+
+# For Codex CLI
+mkdir -p ~/.codex/skills/session-recall
+cp skills/session-recall/SKILL.md ~/.codex/skills/session-recall/
+
+# For Google Antigravity
+mkdir -p ~/.gemini/config/skills/session-recall
+cp skills/session-recall/SKILL.md ~/.gemini/config/skills/session-recall/
+
+# For Kimi Code
+mkdir -p ~/.kimi-code/skills/session-recall
+cp skills/session-recall/SKILL.md ~/.kimi-code/skills/session-recall/
+```
+
+When you type `/session-recall <query>` or ask *"what did we do with the payment webhook last week?"*, your agent will automatically invoke `recall` and rerank the results with relevant resumption commands.
+
+---
+
 <a name="chinese"></a>
 ## 🇨🇳 中文说明
 
